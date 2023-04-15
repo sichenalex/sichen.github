@@ -1,0 +1,64 @@
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(quantmod)
+library(TTR)
+```
+
+```{r data}
+# Define the symbols and dates
+symbol <- "USDCNH=X"
+start_date <- "2019-01-01"
+end_date <- "2021-09-30"
+
+# Download the data
+getSymbols(symbol, src = "yahoo", from = start_date, to = end_date)
+
+# Calculate the Fibonacci retracement levels
+high <- max(USDCNH$USDCNH.X.High)
+low <- min(USDCNH$USDCNH.X.Low)
+diff <- high - low
+fib_levels <- fibRetracement(diff)
+```
+
+```{r strategy}
+# Define the strategy
+fib_strategy <- function(price, levels) {
+  if (price >= levels[0] && price < levels[1]) {
+    return("Buy")
+  } else if (price <= levels[2] && price > levels[3]) {
+    return("Sell")
+  } else {
+    return("Hold")
+  }
+}
+
+# Apply the strategy to the data
+signals <- sapply(Cl(USDCNH), fib_strategy, levels = fib_levels)
+
+# Convert the signals to positions
+positions <- ifelse(signals == "Buy", 1, ifelse(signals == "Sell", -1, 0))
+
+# Calculate the returns
+returns <- Return.calculate(Cl(USDCNH)) * positions
+
+# Calculate the cumulative returns
+cum_returns <- cumprod(1 + returns) - 1
+```
+
+```{r plot}
+# Plot the cumulative returns
+plot(cum_returns, main = "Fibonacci Strategy on USDCNH FX Pair", ylab = "Cumulative Returns")
+```
+
+```{r table}
+# Create a table of results
+results <- data.frame(Date = index(USDCNH), Returns = returns, Cumulative_Returns = cum_returns)
+```
+
+```{r knitr, results='asis'}
+# Create a table using kable
+library(knitr)
+kable(results, format = "html", caption = "Table of Results")
+```
+
